@@ -60,8 +60,6 @@ pfSense → **Firewall → Rules → LAN → Add**
    - All ports filtered/ignored  
    - No SYN packets reached Windows  
 3. Wireshark showed **no traffic** from Kali’s IP (block successful).
-<img width="2347" height="1304" alt="ran second nmap scan " src="https://github.com/user-attachments/assets/03e871a6-a816-42ac-a9c4-47c0a27fb449" />
-<img width="2346" height="1278" alt="No packets from ip coming through " src="https://github.com/user-attachments/assets/ad9e97ab-c077-4f8a-bc4f-ae7a8e733135" />
 
 ---
 
