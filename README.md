@@ -1,72 +1,162 @@
-# pfSense-Firewall-Traffic-Filtering-Lab
+# 🔥 pfSense Home Lab – Full Firewall Setup, DNS Fix, and Windows vs Linux Access Control
 
-## Overview
-Simulated attacker traffic from Kali Linux → Windows 11 victim, then created a pfSense firewall rule to block the attacker and verified using Wireshark + Nmap.
+This project documents my complete pfSense home lab inside VMware Workstation.  
+I built a full internal network behind pfSense, configured firewall rules, fixed a DNS issue that took nearly 3 hours, and created segmentation where **Windows 11 can browse the internet but Kali Linux cannot**.
+---
 
-**Tools:** pfSense, Windows 11, Kali Linux, VMware, Wireshark, Nmap  
-**Skills:** firewall rule creation, packet capture, threat simulation, network security  
-**MITRE:** T1046 (Network Scanning)
+# 🧱 1. Lab Environment
 
-<img width="1166" height="656" alt="pfsense installed" src="https://github.com/user-attachments/assets/a1783546-d653-4627-bdd1-1b18013ed464" />
-<img width="2358" height="1039" alt="pfsense installe 2" src="https://github.com/user-attachments/assets/a4b0c770-c500-4dce-b54c-97fc34a464d4" />
+**Hypervisor:** VMware Workstation  
+**Firewall:** pfSense Community Edition  
+
+**Virtual Machines**
+- pfSense Firewall  
+- Windows 11 (allowed to browse)  
+- Kali Linux (blocked from browsing)  
+
+**Network Layout**
+
+| Device        | IP Address      | Purpose |
+|---------------|------------------|---------|
+| pfSense LAN   | 192.168.30.1     | Gateway + DNS |
+| Windows 11    | 192.168.30.10    | Allowed to browse |
+| Kali Linux    | 192.168.30.51    | Blocked from browsing |
+| LAN Network   | 192.168.30.0/24  | Internal subnet |
+
+All devices are on **VMnet2**, behind pfSense.
 
 ---
 
-## 1. Lab Setup
-- pfSense VM with:
-  - WAN: NAT
-  - LAN: VMnet2 (Host-only) → 192.168.30.1/24
-- Windows 11 (victim): 192.168.30.50
-- Kali Linux (attacker): 192.168.30.51
+# 🛠 2. Installing pfSense (Fresh Setup)
+
+### Step 1 — Create pfSense VM
+- 2 vCPUs  
+- 2GB RAM  
+- **NIC1 → WAN** (NAT or Bridged)  
+- **NIC2 → LAN** (Custom VMnet2)
+
+### Step 2 — pfSense Console Configuration
+Assign interfaces:
+
+- WAN → NIC1  
+- LAN → NIC2  
+
+Set LAN IP:
+- **192.168.30.1**  
+- **255.255.255.0 (/24)**
+<img width="1536" height="984" alt="pfsense" src="https://github.com/user-attachments/assets/6ab019b2-1d28-4e0f-8f92-e44dfc3052b4" />
+
+
+### Step 3 — Access pfSense GUI
+On Windows enter:
+
+`https://192.168.30.1`
+
+Login:  
+`admin / pfsense`
+<img width="2344" height="1276" alt="dashboard" src="https://github.com/user-attachments/assets/9396c80a-fbdf-470b-84e7-80d3cfa555ff" />
+
+Run the setup wizard.
 
 ---
 
-## 2. Baseline Attack (Before Firewall Rule)
-1. Started Wireshark on Windows (Ethernet1).
-2. Display filter:
-   ```
-   ip.addr == 192.168.30.51
-   ```
-3. Kali ran:
-   ```
-   nmap 192.168.30.50
-   ```
-4. Windows Wireshark showed SYN packets from Kali → Windows (attack visible).
-<img width="2307" height="1298" alt="ran nmap scan on linux" src="https://github.com/user-attachments/assets/d8a6103f-28f6-4ce5-b5b3-4604b6f01e17" />
-<img width="2359" height="1282" alt="SYN SCAN WIN " src="https://github.com/user-attachments/assets/f8bc5c43-6350-4913-9f18-8467620f8c89" />
+# 🌐 3. Connect Windows & Kali to pfSense
+
+### Windows 11 Network Settings
+- Adapter: VMnet2  
+- IP: 192.168.30.10  
+- Gateway: 192.168.30.1  
+- DNS: 192.168.30.1  
+
+### Kali Linux Network Settings
+- Adapter: VMnet2  
+- IP: 192.168.30.51  
+- Gateway: 192.168.30.1  
+- DNS: 192.168.30.1  
+
+Both route through pfSense.
 
 ---
 
-## 3. Create Firewall Rule (Block Kali)
-pfSense → **Firewall → Rules → LAN → Add**
+# 💥 4. The 3-Hour Problem — No DNS, No Browsing
 
-- **Action:** Block  
-- **Interface:** LAN  
-- **Protocol:** Any  
-- **Source:** Address → `192.168.30.51 /32`  
-- **Destination:** Any  
-- **Log packets:** Enabled  
-- Save → Apply
-<img width="2282" height="1024" alt="configured firewall rules" src="https://github.com/user-attachments/assets/1932bd05-6660-48c5-9b11-1cba04d59fc5" />
+At one point, **neither Windows nor Kali could load websites**.
+
+They could:
+- ✔ Ping IPs like `8.8.8.8`  
+
+But:
+- ❌ Could not ping domains  
+- ❌ Browsers failed  
+- ❌ DNS lookups failed  
+
+I tried:
+- Firewall rules  
+- NAT  
+- IP reconfiguration  
+- Resetting pfSense  
+- Googling, Reddit, YouTube  
+- Even AI tools  
+
+**The issue was ONE check box:**
+
+> **DNS Resolver was turned OFF.**
+
+### Fix:
+**Services → DNS Resolver → Enable → Save**
+
+Instant fix:
+✔ DNS working  
+✔ Browsers working  
+✔ Full internet restored  
 
 ---
 
-## 4. Verify Block (After Rule)
-1. Kali re-ran:
-   ```
-   nmap 192.168.30.50
-   ```
-2. Result:
-   - All ports filtered/ignored  
-   - No SYN packets reached Windows  
-3. Wireshark showed **no traffic** from Kali’s IP (block successful).
+# 🧩 5. Create Browsing Port Alias
+
+**Firewall → Aliases → Ports → Add**
+
+**Alias Name:** `Browsing`  
+**Ports:**  
+- 80 (HTTP)  
+- 443 (HTTPS)  
+- 8080 (Alternative HTTP)  
+- 53 (DNS – required for name resolution)
+
+This groups browsing ports into one object.
+<img width="2324" height="1220" alt="Browsing Aliases" src="https://github.com/user-attachments/assets/368ee9ea-ad8f-4748-910b-79487cae6a1d" />
 
 ---
 
-## 5. Key Outcomes
-- Successfully blocked attacker traffic at the firewall.
-- Verified mitigation through packet capture + Nmap behavior.
-- Demonstrated SOC-style detection → containment workflow.
+# 🚦 6. Allow ONLY Windows 11 to Browse the Internet
 
+**Firewall → Rules → LAN → Add**
 
+### Rule:
+- Action: **Pass**  
+- Source: **192.168.30.10**  
+- Destination: **Any**  
+- Protocol: **TCP/UDP**  
+- Ports: **Browsing alias**  
+- Description: Allow Windows 11 Browsing  
+<img width="2336" height="1274" alt="rule only allowing win11 to google" src="https://github.com/user-attachments/assets/a0570e35-2552-476c-810d-f7021a0b588e" />
 
+### Result:
+✔ Windows loads websites  
+✔ Windows resolves DNS  
+✔ Windows only device allowed to browse  
+
+---
+
+# 🔴 7. Block Kali Linux From Browsing (Automatically)
+
+Because only Windows gets the Browsing rule, Kali is blocked by default.
+
+### Kali Behavior:
+✔ Can ping IPs  
+❌ Cannot resolve DNS  
+❌ Cannot load websites  
+❌ Ports 53, 80, 443 blocked  
+
+This creates segmentation without VLANs.
+<img width="2553" height="1354" alt="unable to search on linux " src="https://github.com/user-attachments/assets/1d393e5e-8d17-478b-b4a3-6f6ad8bc2c61" />
