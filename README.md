@@ -33,6 +33,7 @@ Simulated attacker traffic from Kali Linux → Windows 11 victim, then created a
    ```
 4. Windows Wireshark showed SYN packets from Kali → Windows (attack visible).
 <img width="2307" height="1298" alt="ran nmap scan on linux" src="https://github.com/user-attachments/assets/d8a6103f-28f6-4ce5-b5b3-4604b6f01e17" />
+<img width="2359" height="1282" alt="SYN SCAN WIN " src="https://github.com/user-attachments/assets/f8bc5c43-6350-4913-9f18-8467620f8c89" />
 
 ---
 
